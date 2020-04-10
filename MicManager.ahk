@@ -11,6 +11,7 @@
     Menu, Tray,NoStandard ;removes all standard options from the tray menu
     Menu, Tray, Add, Open,ShowGui
     Menu, Tray, Add, Options,OptionsGui
+    Menu, Tray, Add, Open Sound Control Panel,SysCtrlPnl
     Menu, Tray, Add, Exit,CloseApp
     Menu, Tray,Default,Open
     ;=======================================================
@@ -54,7 +55,7 @@
     ;=======================================================
     ;Load settings from the ini file
     ;{======================================================
-    SavedSettings := ["TTTThreshold","TTTTimeout","selected_id","LastPosX","LastPosY"] ;Object containing the list of variables that can be saved to the ini file
+    SavedSettings := ["PlayMuteSound","TTTThreshold","TTTTimeout","selected_id","LastPosX","LastPosY"] ;Object containing the list of variables that can be saved to the ini file
     for index,var in SavedSettings
         IniRead,%var%,%IniFile%,settings,%var%
     SysGet, ScreenWidth, 78
@@ -63,6 +64,8 @@
     ;outside of the current resolution, if they are clear the LasPos variables so the Gui is shown at the default location
     (LastPosX > ScreenWidth ? LastPosX := "")
     (LastPosY > ScreenHeight ? LastPosY := "")
+    if (PlayMuteSound = "")
+        PlayMuteSound := 0
     ;=======================================================
     ;Build the Main Gui
     ;{======================================================
@@ -124,10 +127,10 @@
         Gui, Color, %GuiBkgdColor% ;}
     ;}
     gosub OptionsGui ;build the options gui(but don't show it) to establish a list of available devices, if a selected_id is saved check if it exists on the system, if not choose the default device
-    ShowOptionGui := true ;Set this to true so the next time the OptionsGui label is ran the Gui will be shown
     Start_Audio_Meter(selected_id) ;Now that the we know the selected_id (from building the OptionsGui), start the audio stream to monitor the mic input level so we can update the volume feedback progress bar
     SetTimer,UpdateMuteStatus,200 ;start the timer that looks for changes to the selected_id mute status
     Gosub, UpdateMuteStatus ;The UpdateMuteStatus timer won't run for 200 miliseconds so run the sub now so we can update the mute status button before showing the gui
+    ShowOptionGui := true ;Set this to true so the next time the OptionsGui label is ran the Gui will be shown
     Gui, Main:Show,% "w150 h65" . (LastPosX <> "" and LastPosY <> "" ? " x" . LastPosX . " y" . LastPosY : "") ;if both x and y coordinates of the last position of the window have been loaded from the iniFile, show the window at that position, if not, the window will be shown at the default location
     WinSet, Transparent, 220, ahk_id %GUIHwnd%
     ;=======================================================
@@ -243,9 +246,9 @@
             Gui, Options:Font, s9, Consolas
             Gui, Options:Add, Edit, vCommand  r5 ReadOnly -Wrap -VScroll w515 Center disabled, % StartMsg
             Gui, Options:Font
-            Gui, Options:Add, Button, gSysCtrlPnl xm+185 y+5 vSysCtrlPnlBtnText , Open sound control panel
+            Gui, Options:Add, Button, gSysCtrlPnl xm+100 y+5 vSysCtrlPnlBtnText , Open sound control panel
+            Gui, Options:Add, Checkbox, vPlayMuteSound gPlayMuteSound Checked%PlayMuteSound% x+15 yp+5, Play a sound when the mute status changes
             Gui, Options:Add, ListView, vDeviceLV gDeviceLV AltSubmit r6 w515 xm, #|System Default|Selected|Name|Adapter|ID
-            ;Gui, Options:Add, ListView, vControlLV gControlLV AltSubmit r3 w500, Control|Value
             Gui, Options:Add, Text,xm+37 y+15 gVolumeText vVolumeText ,Volume:
             VolumeText_TT := "Current device input volume. Move the slider to adjust."
             Gui, Options:Add, Slider, xp+40 yp-5 vVolumeSlider gVolumeSlider Disabled w150 AltSubmit ToolTip
@@ -370,27 +373,21 @@
         return
 
         SysCtrlPnl: ;launches the system sound control panel
-            Run rundll32.exe shell32.dll`,Control_RunDLL mmsys.cpl`,`,0
+            Run rundll32.exe shell32.dll`,Control_RunDLL mmsys.cpl`,`,1
         return
         
         OptionsGuiEscape:
         OptionsGuiClose:
             Gui,Submit ;when the OptionsGui is closed, save all the values to their associated variables
-            ;Save the settings to a file, instead of manually defining the variables to save can we create an object of all the loaded variables when reading from the ini file at the start of the script?
-            variables := 
-            (Ltrim
-                "TTTThreshold = " . TTTThreshold . "
-                TTTTimeout = " . TTTTimeout . "
-                selected_id = """ . selected_id . """"
-            )
-            Iniwrite, %variables%,%IniFile%,settings
-            
+            for index,var in SavedSettings ;write the saved settings to the .ini file
+                IniWrite,% %var%,%IniFile%,settings,%var%
             setTimer, UpdateOptionsVolumeBar,off ;disable the OptionsGui volume bar if it's running
             Start_Audio_Meter(selected_id) ;restart the volume bar on the MainGui
         return
         
         ;Inorder for WM_MOUSEMOVE() to register when the mouse is over a text control there needs to be an associated label
         ;Even though these are blank, without them the tooltips wouldn't been shown when the mouse hovers over the text
+        PlayMuteSound:
         TTTSlider:
         TTTTimeoutText:
         TTTText:
@@ -433,9 +430,14 @@
         UpdateMuteStatus:
             SoundGet,MuteStatus,Master,Mute,selected_id_num
             if (MuteStatus <> PrevMuteStatus) {
+                if PlayMuteSound and ShowOptionGui ;the addition check to see if ShowOptionGui is true prevents the sound from being played when the initial mute status is set
+                    SoundPlay, % A_WinDir "\Media\Speech " (MuteStatus = "On" ? "Sleep" : "On") ".wav"
                 Guicontrol,% "Main: Hide"(MuteStatus = "On" ? 0:1),MicBtn_Mute
                 PrevMuteStatus := MuteStatus
             }
+        return
+        PlaySound:
+            SoundPlay, % A_WinDir "\Media\Speech " (MuteStatus = "On" ? "Sleep" : "On") ".wav",
         return
         ; ---------------------------------------
         ; Name: Update[Options]VolumeBar Timer
