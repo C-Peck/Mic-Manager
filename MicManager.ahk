@@ -5,7 +5,7 @@
     #SingleInstance force
     ;~ SetBatchLines, -1 ;this causes issues with the mouse move message, makes that function trigger endlessly whenever the mouse is over the gui.
     SetWorkingDir, %A_ScriptDir%
-    ;~ #Include VA.ahk
+     #Include VA.ahk
     Menu, Tray, Icon,%A_WinDir%\System32\DDORES.DLL, -2014
     Menu, Tray, Tip, Mic Manager 
     Menu, Tray,NoStandard ;removes all standard options from the tray menu
@@ -209,7 +209,7 @@
         key_presses := 0
     return
 
-    f4::reload
+    ;~ f4::reload
 
 ;}
 ;=======================================================
