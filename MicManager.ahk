@@ -5,7 +5,7 @@
     #SingleInstance force
     ;~ SetBatchLines, -1 ;this causes issues with the mouse move message, makes that function trigger endlessly whenever the mouse is over the gui.
     SetWorkingDir, %A_ScriptDir%
-    #Include VA.ahk
+    ;~ #Include VA.ahk
     Menu, Tray, Icon,%A_WinDir%\System32\DDORES.DLL, -2014
     Menu, Tray, Tip, Mic Manager 
     Menu, Tray,NoStandard ;removes all standard options from the tray menu
@@ -34,8 +34,6 @@
         , GuiHwnd ;misc variables that need to be accessed across different functions. Declaring them here for simplicity, not the best practice for larger scripts
         , ModeBtn_Bkg_TT
         , MicBtn_Bkg_TT
-        , CloseBtn_Bkg_TT
-        , MinimizeBtn__Bkg_TT
         , PrevControl
         , audioMeter
         , StartMsg
@@ -46,7 +44,6 @@
         , TimerStartTime
         , TTTTimerRunning
         , PrevMuteStatus
-        , SinglePress
         ;~ , selectedKey := "CapsLock" ;not used yet, future state will allow you to easily remap the key used to trigger the hotkey
         
     ;~ HotKey, % "$" . selectedKey, KeyPressDown, ; will switch to assigning the hotkey like this once the key switching feature is working
@@ -365,7 +362,7 @@
                 control_type := "Mute" ;set control_type to mute for the soundset/get commands below
             }
             SoundSet % value, %component_type%, %control_type%, %device_num% ;either set the current VolumeSlider volume, or the mute status, of the current device depending on which control triggered this label
-            SoundGet value, %component_type%, %control_type%, %device_num% ;get the current device value so we can update the edit boxes on the OptionsGui with the currentValue, the confirms the device was actually udpated
+            SoundGet value, %component_type%, %control_type%, %device_num% ;get the current device value so we can update the edit boxes on the OptionsGui with the currentValue, this confirms the device was actually udpated
             if (A_GuiControl = "VolumeSlider")
                 Guicontrol, Options:,CurrentVolume,% round(value)
             else
@@ -424,20 +421,17 @@
         ; Triggered By: Auto execution
         ; Condition: Persistent timer 
         ; Interval: 200 miliseconds
-        ; Gets the current mute status of the selected device and compares it to the previous status
-        ; If the status has changed, update the MainGui to show or hide the mute symbol
+        ; Description: Gets the current mute status of the selected device and compares it to the previous status
+        ;              If the status has changed, update the MainGui to show or hide the mute symbol
         ; ---------------------------------------
         UpdateMuteStatus:
             SoundGet,MuteStatus,Master,Mute,selected_id_num
             if (MuteStatus <> PrevMuteStatus) {
-                if PlayMuteSound and ShowOptionGui ;the addition check to see if ShowOptionGui is true prevents the sound from being played when the initial mute status is set
+                if PlayMuteSound and ShowOptionGui ;the additional check to see if ShowOptionGui is true prevents the sound from being played when the initial mute status is set
                     SoundPlay, % A_WinDir "\Media\Speech " (MuteStatus = "On" ? "Sleep" : "On") ".wav"
                 Guicontrol,% "Main: Hide"(MuteStatus = "On" ? 0:1),MicBtn_Mute
                 PrevMuteStatus := MuteStatus
             }
-        return
-        PlaySound:
-            SoundPlay, % A_WinDir "\Media\Speech " (MuteStatus = "On" ? "Sleep" : "On") ".wav",
         return
         ; ---------------------------------------
         ; Name: Update[Options]VolumeBar Timer
