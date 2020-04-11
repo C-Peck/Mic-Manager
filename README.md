@@ -12,6 +12,8 @@ Capslock is the key used to toggle the mute status in the various modes. I tried
  - **Hold to talk mode:** Press and hold capslock to unmute the selected device, the device will stay unmuted until you release capslock.
  - **Tap to talk mode:** Press the capslock key to unmute your selected device. Your device will stay unmuted as long as the line in volume stays above the threshold defined in the options menu. Once your line in volume falls below the threshold, the tap to talk timeout timer will begin. A blue progress bar on the main window will show the status of this timer. The length of this timeout time is configurable in the options menu. If at any point your device's line in volume exceeds the threshold while the timeout timer is running, the timer will reset. Once the timeout timer has expired, your device will be muted. Press the capslock key again at anytime to stop the timer and manually mute your device.
  
+<p align="center"><img src="https://raw.githubusercontent.com/C-Peck/Mic-Manager/master/Screenshots/Main%20window.png"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/C-Peck/Mic-Manager/master/Screenshots/Options%20Menu.png"></p>
 
  
  
