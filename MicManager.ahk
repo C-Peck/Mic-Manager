@@ -5,7 +5,7 @@
     #SingleInstance force
     ;~ SetBatchLines, -1 ;this causes issues with the mouse move message, makes that function trigger endlessly whenever the mouse is over the gui.
     SetWorkingDir, %A_ScriptDir%
-     #Include VA.ahk
+    #Include VA.ahk
     Menu, Tray, Icon,%A_WinDir%\System32\DDORES.DLL, -2014
     Menu, Tray, Tip, Mic Manager 
     Menu, Tray,NoStandard ;removes all standard options from the tray menu
@@ -17,7 +17,7 @@
     ;=======================================================
     ;Declare global variables and set intial values of others
     ;{======================================================
-    global IniFile := "MicManagerSettings.ini" ;the name of the file the user settings will be saved in, will default to the scritp's directory if an absolute file path isn't specified
+    global IniFile := "MicManagerSettings.ini" ;the name of the file the user settings will be saved in, will default to the script's directory if an absolute file path isn't specified
         , BtnHoverColor := "505050"
         , GuiBkgdColor := "5F646C" 
         , BtnSymbolColor := "White"
@@ -29,9 +29,9 @@
         , BtnList := {"MicBtn":false,"ModeBtn":false,"OptionsBtn":false,"CloseBtn":false,"MinimizeBtn":false} ;object used to reset the hover status of all the buttons, each key's value will be set to true when that button is hovered over
         , CLSID_MMDeviceEnumerator := "{BCDE0395-E52F-467C-8E3D-C4579291692E}" ;constant used by the VA library
         , IID_IMMDeviceEnumerator := "{A95664D2-9614-4F35-A746-DE8DB63617E6}" ;constant used by the VA library
-        , TTTThreshold := 20 ;microphone level you must stay below for the tap to talk timer to mute your mic
-        , TTTTimeout := 10 ;how long in seconds your mic must remain below the threshold before your mic is muted
-        , GuiHwnd ;misc variables that need to be accessed across different functions. Declaring them here for simplicity, not the best practice for larger scripts
+        , TTTThreshold := 20 ;microphone level you must stay below for the tap to talk timer to mute your mic, will be overwritten by the setting in the .ini file if it exists
+        , TTTTimeout := 10 ;how long in seconds your mic must remain below the threshold before your mic is muted, will be overwritten by the setting in the .ini file if it exists
+        , GuiHwnd ;misc variables that need to be accessed across different functions. Declaring them here for simplicity, probably not the best practice for larger scripts
         , ModeBtn_Bkg_TT
         , MicBtn_Bkg_TT
         , PrevControl
@@ -44,25 +44,19 @@
         , TimerStartTime
         , TTTTimerRunning
         , PrevMuteStatus
-        ;~ , selectedKey := "CapsLock" ;not used yet, future state will allow you to easily remap the key used to trigger the hotkey
-        
-    ;~ HotKey, % "$" . selectedKey, KeyPressDown, ; will switch to assigning the hotkey like this once the key switching feature is working
-    
     ;}
     ;=======================================================
     ;Load settings from the ini file
     ;{======================================================
-    SavedSettings := ["PlayMuteSound","TTTThreshold","TTTTimeout","selected_id","LastPosX","LastPosY"] ;Object containing the list of variables that can be saved to the ini file
-    for index,var in SavedSettings
-        IniRead,%var%,%IniFile%,settings,%var%
+    SavedSettings := {"PlayMuteSound":0,"TTTThreshold":TTTThreshold,"TTTTimeout":TTTTimeout,"selected_id":"","LastPosX":"","LastPosY":""} ;Object containing the list of variables that can be saved to the ini file, name of the variable and it's default value
+    for var,default_val in SavedSettings
+        IniRead,%var%,%IniFile%,settings,%var%,%default_val%
     SysGet, ScreenWidth, 78
     SysGet, ScreenHeight, 79
-    ;if the display configuration has changed since the last instance of the script, check if the saved coordinates are 
+    ;incase the display configuration has changed since the last instance of the script, check if the saved coordinates are 
     ;outside of the current resolution, if they are clear the LasPos variables so the Gui is shown at the default location
     (LastPosX > ScreenWidth ? LastPosX := "")
     (LastPosY > ScreenHeight ? LastPosY := "")
-    if (PlayMuteSound = "")
-        PlayMuteSound := 0
     ;=======================================================
     ;Build the Main Gui
     ;{======================================================
@@ -144,42 +138,6 @@
 ;=======================================================
 ;Hotkeys
 ;{======================================================
-/*
-    Will use something like this once the key switching feature is implemented
-    KeyPressDown:
-        if (key_presses > 0) ; SetTimer already started, so we log the keypress instead.
-        {
-            key_presses += 1
-            return
-        }
-        ; Otherwise, this is the first press of a new series. Set count to 1 and start the timer:
-        key_presses := 1
-        SetTimer, KeyPressDownTimer, -250 ; Wait for more presses within a 250 millisecond window.
-    return
-    
-    KeyPressDownTimer:
-        if (key_presses = 1) ; The key was pressed once.
-        {
-            (Mode = 1 ? ToggleMute() : (Mode = 2 ? HoldToTalk(): TapToTalk()))
-        }
-        else if (key_presses = 2) ; The key was pressed twice.
-        {
-            if (selectedKey = "CapsLock")
-                SetCapsLockState % !GetKeyState("CapsLock", "T") ;ToggleMode()
-            else if (selectedKey = "NumLock")
-                SetNumLockState % !GetKeyState("NumLock", "T")
-            else
-            {
-                if (StrLen(selectedKey) = 1)
-                    send %selectedKey%
-                else
-                    send {%selectedKey%}
-            }
-        }
-        ; Regardless of which action above was triggered, reset the count to prepare for the next series of presses:
-        key_presses := 0
-    return
-*/
     ; I think capslock is the best key to use here. Press it once to toggle mute
     ; Press it twice within 250 miliseconds to toggle the mode
     ; To send the native capslock function, just hold any other modifying key like
@@ -272,54 +230,11 @@
                 remain below the threshold before your mic is muted."
             )
             Gui, Options:Add, Edit,vTTTTimeout yp-5 x+5 r1  -Wrap -VScroll w40 Center, % TTTTimeout
-            ;~ if (AllowKeyChange) ;this feature needs more work
-            ;~ {
-                ;~ Gui, Options:Add, Text, vSelectedKeyText gSelectedKeyText yp+5 x+15, Toggle Key:
-                ;~ SelectedKeyText_TT := 
-                ;~ (LTrim
-                    ;~ "This is the key pressed to toggle the mute status of the mic,
-                    ;~ click inside the edit box to set a new key."
-                ;~ )
-                ;~ Gui, Options:Add, Edit,vSelectedKey gSelectedKey yp-5 x+5 r1 ReadOnly -Wrap -VScroll w70 Center, % SelectedKey
-            ;~ }
             PopulateDeviceLV() 
             if (ShowOptionGui)
                 Gui, Options:Show,, Sound Controls
         return 
     ;}
-    ;=======================================================
-    ;Build Key Change Gui - Not yet functional
-    ;{======================================================
-        ;~ KeyChangeGui:
-            ;~ Gui, Options:+Disabled
-            ;~ Gui, KeyChange:New, +OwnerOptions +hwndKeyChangeHwnd +ToolWindow -caption
-            ;~ Gui, KeyChange:Font, s10, Consolas
-            ;~ Gui, KeyChange:Add, Edit,vKeyChangeEdit r5 ReadOnly -Wrap -VScroll w260 Center disabled,`nPress the new key`nKey combinations are not supported`nPress ESC to cancel
-            ;~ Gui, KeyChange:Color,CCCCCC
-            ;~ WinGetPos,Ox,Oy,Ow,Oh,ahk_id %OptionsGuiHwnd%
-            ;~ KCw := 285
-            ;~ KCh := 100
-            ;~ KCx := Round((Ow-KCw)/2)+Ox
-            ;~ KCy := Round((Oh-KCh)/2)+Oy
-            ;~ Gui, KeyChange:Show, x%KCx% y%KCy% w%KCw% h%KCh%,New Key Select
-            ;~ keylist := "{Esc}{Tab}{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{CapsLock}{NumLock}{PrintScreen}{Pause}{NumPad0}"
-            ;~ Input,NewKey, L1, %keylist%
-            ;~ If (Errorlevel <> "MAX")
-                ;~ if (InStr(ErrorLevel,"Escape"))
-                    ;~ goto, CloseKeyChangeGui
-                ;~ else
-                    ;~ NewKey := SubStr(ErrorLevel,8)
-            ;~ if (NewKey <> SelectedKey) ;disable old hotkey before saving the new key
-                ;~ SelectedKey := NewKey
-
-            ;~ GuiControl,Options:,SelectedKey, % SelectedKey
-            ;~ CloseKeyChangeGui:
-            ;~ Gui, Options:-Disabled
-            ;~ Gui, KeyChange:hide
-        ;~ return
-
-    ;~ SelectedKey:
-    ;~ return
     ;=======================================================
     ;Options Gui Control Labels and Functions
     ;{======================================================
@@ -376,8 +291,9 @@
         OptionsGuiEscape:
         OptionsGuiClose:
             Gui,Submit ;when the OptionsGui is closed, save all the values to their associated variables
-            for index,var in SavedSettings ;write the saved settings to the .ini file
-                IniWrite,% %var%,%IniFile%,settings,%var%
+            for var,default_val in SavedSettings ;write the saved settings to the .ini file
+                if (var <> "LastPosX" and var <> "LastPosY") ;don't save the LastPos variables at this time, they only need to be saved when the window moves
+                    IniWrite,% %var%,%IniFile%,settings,%var%
             setTimer, UpdateOptionsVolumeBar,off ;disable the OptionsGui volume bar if it's running
             Start_Audio_Meter(selected_id) ;restart the volume bar on the MainGui
         return
@@ -517,7 +433,6 @@
                 return
             PrevX := x , PrevY := y
             tooltip, % %A_GuiControl%_TT ;display tooltip
-            ;~ tooltip % A_GuiControl A_Space A_TickCount
             ;find the position of the _ in the current control if there is one, we need to extract the text up until the _ to get the base control name ie MicBtn_Bkg > MicBtn, then we can dynamically target the other parts of the button like MicBtn_Symbol1 or MicBtn_Mute
             _pos := instr(A_GuiControl,"_"), CurrControl := _pos ? SubStr(A_GuiControl,1,_pos-1 ) : A_GuiControl ;if there's no _ just leave A_GuiControl as is
             If ((CurrControl <> PrevControl) and (A_Gui = "Main"))
@@ -604,7 +519,7 @@
                 VA_IMMDeviceEnumerator_GetDefaultAudioEndpoint(enum, 1, 0, device) ;1 for capture devices, 0 for playback devices
                 VA_IMMDevice_GetId(device, default_id) 
                 if (selected_id = "") ;if the selected_id hasn't been defined yet
-                    selected_id := default_id ;set the default system communication device as the selected_id
+                    selected_id := default_id ;set the default system capture device as the selected_id
                 ObjRelease(device)
                 
                 VA_IMMDeviceCollection_GetCount(devices, count)
@@ -621,7 +536,7 @@
                         LV_Add("", id == selected_id ? selected_id_num := A_Index : A_Index, id == default_id ? ">>" : "",id == selected_id ? ">>" : "" ,m1, m2,id)
                     ObjRelease(device)
                 }
-                if (!selected_id_num) ;if this variable isn't defined, it means the saved selected_id wasnt found on the system, so change it to the default device and restart the function
+                if (!selected_id_num) ;if this variable isn't defined, it means the selected_id loaded from the .ini file wasn't found on the system, so change it to the default device and restart the function
                 {
                     selected_id := default_id
                     goto, id_recheck
@@ -697,7 +612,7 @@
 ;}
 
 ;=======================================================
-;VA Library Functions used by this script, Uncomment all these out if you'd rather not need to reference the whole VA library
+;VA Library Functions used by this script, Uncomment all these out and remove the #include va.ahk if you'd rather not need to reference the whole VA library
 ;{======================================================
     ;~ VA_IAudioMeterInformation_GetPeakValue(this, ByRef Peak) {
         ;~ return DllCall(NumGet(NumGet(this+0)+3*A_PtrSize), "ptr", this, "float*", Peak)
