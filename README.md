@@ -15,6 +15,11 @@ Capslock is the key used to toggle the mute status in the various modes. I tried
 <p align="center"><img src="https://raw.githubusercontent.com/C-Peck/Mic-Manager/master/Screenshots/Main%20window.png"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/C-Peck/Mic-Manager/master/Screenshots/Options%20Menu.png"></p>
 
+**Planned Updates:**
+ - Allow the user to define a new hotkey from the options menu.
+ - Add the ability to select multiple devices to manage at one time
+ - Easily customize the main window colors from the options menu.
+
  
  
   
